@@ -4,7 +4,10 @@ import { parseUserProfile } from './services/geminiService';
 import { createProfile } from './services/database';
 import { ProfileData } from './types';
 
-const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
+// Sanitize the token to remove ANY whitespace characters (spaces, newlines, tabs) from anywhere in the string.
+// This is a more robust fix for the 'ERR_UNESCAPED_CHARACTERS' polling error.
+const token = process.env.TELEGRAM_BOT_TOKEN?.replace(/\s/g, '');
+
 if (!token) {
   throw new Error('TELEGRAM_BOT_TOKEN is not set in environment variables');
 }
