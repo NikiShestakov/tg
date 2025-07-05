@@ -4,7 +4,7 @@
     "target": "ES2020",
     "module": "commonjs",
     "rootDir": "./src",
-    "outDir": "./dist",
+    "outDir": "../dist/backend",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,

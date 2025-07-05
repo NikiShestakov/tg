@@ -1,203 +1,181 @@
+# Telegram Profile Parser - Deployment Guide
 
-# Telegram Profile Parser - Руководство по развертыванию на Webhost1.ru
+This guide provides step-by-step instructions to deploy the bot (backend) and the admin panel (frontend) on an Ubuntu server. The previous instructions were flawed; this new process is simpler and more reliable.
 
-Это исчерпывающее руководство поможет вам шаг за шагом развернуть и запустить бота (бэкенд) и админ-панель (фронтенд) на облачном VDS-сервере от Webhost1.ru с операционной системой Ubuntu.
+---
 
-## Часть 1: Подготовка сервера на Webhost1.ru
+### **Overview of the New Process**
 
-1.  **Заказ сервера:**
-    *   Зайдите в панель управления Webhost1.ru.
-    *   Создайте новый VDS-сервер (раздел "Виртуальные серверы").
-    *   При заказе выберите операционную систему **Ubuntu 22.04 LTS**. Это самая стабильная и рекомендуемая версия.
-    *   Выберите тариф. Для старта хватит самого простого (например, VDS-Промо).
-    *   После заказа дождитесь письма на почту с данными для доступа.
-2.  **Подключение к серверу:**
-    *   В письме от Webhost1.ru вы найдете IP-адрес, логин (`root`) и пароль.
-    *   Откройте терминал на вашем компьютере (если у вас Windows, можете использовать PowerShell, CMD или [PuTTY](https://www.putty.org/)).
-    *   Подключитесь к серверу по SSH командой:
-        ```bash
-        ssh root@ВАШ_IP_АДРЕС_СЕРВЕРА
-        ```
-    *   Система попросит подтвердить подлинность хоста (введите `yes`) и затем введите пароль, который вам прислали.
+The entire project (frontend and backend) is now managed by a single `package.json` file in the root directory. A single `npm run build` command will:
+1.  Compile the frontend React application into simple HTML and JavaScript.
+2.  Compile the backend TypeScript code into JavaScript.
+All compiled files will be placed in a `dist` directory, ready for deployment.
 
-## Часть 2: Установка необходимого ПО
+---
 
-Эти команды нужно выполнять в терминале, подключившись к вашему серверу.
+### **Part 1: Server Preparation**
 
-1.  **Обновление системы:**
+_If you have already done this from the previous guide (installed Node.js, PostgreSQL, PM2, Git, Nginx), you can skip to Part 2._
+
+1.  **Connect to your server:**
+    ```bash
+    ssh root@YOUR_SERVER_IP
+    ```
+2.  **Update system:**
     ```bash
     apt update && apt upgrade -y
     ```
-2.  **Установка Node.js (через nvm - менеджер версий):**
+3.  **Install Node.js (v20):**
     ```bash
-    # Скачиваем и запускаем скрипт установки nvm
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
-    # Активируем nvm (нужно для текущей сессии)
-    export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-    # Устанавливаем стабильную версию Node.js (например, v20)
+    # IMPORTANT: Log out and log back in to the server
+    exit
+    ssh root@YOUR_SERVER_IP
+    # Now install and use Node.js
     nvm install 20
-    # Делаем эту версию основной
     nvm use 20
     ```
-3.  **Установка базы данных PostgreSQL:**
+4.  **Install PostgreSQL, Git, Nginx, and PM2:**
     ```bash
-    apt install postgresql postgresql-contrib -y
-    ```
-4.  **Установка PM2 (менеджер процессов для Node.js):**
-    PM2 нужен, чтобы ваш бот работал 24/7 и автоматически перезапускался в случае сбоев или перезагрузки сервера.
-    ```bash
+    apt install postgresql postgresql-contrib git nginx -y
     npm install pm2 -g
     ```
-5.  **Установка Git (для загрузки кода):**
-    ```bash
-    apt install git -y
-    ```
-## Часть 3: Настройка базы данных PostgreSQL
 
-1.  **Войдите в режим управления PostgreSQL:**
+### **Part 2: Database Setup**
+
+_If you already have a database and user set up, you can skip this part. Just make sure you have your `DATABASE_URL` string ready._
+
+1.  **Enter PostgreSQL shell:**
     ```bash
     sudo -u postgres psql
     ```
-2.  **Создайте пользователя для бота.** Придумайте надежный пароль вместо `my_secure_password`.
+2.  **Create user and database (replace `my_secure_password` with a strong password):**
     ```sql
     CREATE USER bot_user WITH PASSWORD 'my_secure_password';
-    ```
-3.  **Создайте базу данных для бота:**
-    ```sql
     CREATE DATABASE bot_db;
-    ```
-4.  **Дайте все права новому пользователю на новую базу данных:**
-    ```sql
     GRANT ALL PRIVILEGES ON DATABASE bot_db TO bot_user;
-    ```
-5.  **Выйдите из psql:**
-    ```sql
     \q
     ```
-6.  **Сформируйте строку подключения (DATABASE_URL):** Она понадобится нам на следующем шаге. Формат: `postgres://USER:PASSWORD@HOST:PORT/DATABASE`. Для нашей настройки она будет выглядеть так:
+3.  **Your connection string (`DATABASE_URL`) is:**
     `postgres://bot_user:my_secure_password@localhost:5432/bot_db`
 
-## Часть 4: Развертывание и запуск бэкенда (бот + API)
+### **Part 3: Code Deployment and Build**
 
-1.  **Загрузите код на сервер.** Проще всего это сделать, если ваш код лежит на GitHub.
+1.  **Clone your project from GitHub:**
+    (If you have it cloned already, just `cd` into the directory and run `git pull` to get the latest changes.)
     ```bash
-    # Перейдите в домашнюю директорию
+    # Go to home directory
     cd ~
-    # Клонируйте ваш репозиторий (замените URL на свой)
-    git clone https://github.com/ваш_логин/ваш_репозиторий.git
-    # Перейдите в папку с проектом, а затем в папку бэкенда
-    cd ваш_репозиторий/backend
+    # Clone your repository
+    git clone https://github.com/YOUR_USERNAME/telegram-profile-bot.git
+    # Enter the project directory
+    cd telegram-profile-bot
     ```
-2.  **Установите зависимости проекта:**
+2.  **DELETE the old package.json:** The project now uses the one in the root.
+    ```bash
+    rm backend/package.json
+    ```
+3.  **Install all dependencies:**
     ```bash
     npm install
     ```
-3.  **Настройте переменные окружения:**
-    *   Создайте файл `.env`, скопировав пример:
-        ```bash
-        cp .env.example .env
-        ```
-    *   Откройте файл для редактирования (например, с помощью `nano`):
-        ```bash
-        nano .env
-        ```
-    *   **Заполните все поля вашими данными:**
-        *   `TELEGRAM_BOT_TOKEN`: Токен вашего бота от `@BotFather`.
-        *   `API_KEY`: Ваш ключ для Google Gemini API.
-        *   `DATABASE_URL`: Строка подключения к БД, которую мы сформировали на предыдущем шаге.
-        *   `PORT`: Можно оставить `3001`.
-    *   Сохраните файл и выйдите из `nano` (нажмите `Ctrl+X`, затем `Y`, затем `Enter`).
-
-4.  **Соберите (скомпилируйте) проект:**
+4.  **Configure Environment Variables:**
+    *   Navigate into the `backend` directory: `cd backend`
+    *   Copy the example file to a new `.env` file: `cp .env.example .env`
+    *   Edit the `.env` file: `nano .env`
+    *   Fill in your `TELEGRAM_BOT_TOKEN`, `API_KEY`, and `DATABASE_URL`.
+    *   Save (`Ctrl+X`), confirm (`Y`), and press `Enter`.
+    *   Go back to the root project directory: `cd ..`
+5.  **Build the entire application:**
+    This single command compiles both frontend and backend.
     ```bash
     npm run build
     ```
-5.  **Запустите бота с помощью PM2:**
+    After this, you will have a `dist` folder in your project root containing a `public` subfolder for the frontend and a `backend` subfolder.
+
+### **Part 4: Run the Backend with PM2**
+
+1.  **Start the bot:**
+    (If you have an old "telegram-bot" process running, delete it first with `pm2 delete telegram-bot`)
     ```bash
     pm2 start npm --name "telegram-bot" -- start
     ```
-6.  **Проверьте статус:**
-    *   Убедитесь, что бот запустился и работает (`status` должен быть `online`):
-        ```bash
-        pm2 list
-        ```
-    *   Посмотрите логи, чтобы убедиться, что нет ошибок:
-        ```bash
-        pm2 logs telegram-bot
-        ```
-7.  **Настройте автозапуск PM2:** Эта команда сгенерирует и покажет вам команду, которую нужно выполнить, чтобы ваши приложения запускались автоматически после перезагрузки сервера. Просто скопируйте и выполните ее.
-    ```bash
-    pm2 startup
-    ```
+2.  **Save the process list and configure auto-startup:**
     ```bash
     pm2 save
+    pm2 startup
+    # Copy and run the command that pm2 gives you
     ```
+3.  **Check status:**
+    `pm2 status` (should show "telegram-bot" as online)
 
-**Бэкенд запущен и работает!** Теперь можно перейти к админ-панели.
+### **Part 5: Configure Nginx to Serve the Frontend**
 
-## Часть 5: Развертывание админ-панели (фронтенд)
-
-Мы разместим админ-панель на том же сервере, используя веб-сервер Nginx, который очень прост в настройке.
-
-1.  **Установите Nginx:**
+1.  **Create a web directory and copy built files:**
     ```bash
-    apt install nginx -y
-    ```
-2.  **Создайте папку для файлов админ-панели:**
-    ```bash
+    # Create the directory
     mkdir -p /var/www/admin-panel
+    # Copy the built frontend files into it
+    cp -r dist/public/* /var/www/admin-panel/
     ```
-3.  **Загрузите файлы фронтенда:** Скопируйте все файлы вашей админ-панели (`index.html`, `App.tsx`, `components/`, `types.ts` и т.д.) в папку `/var/www/admin-panel` на сервере. Это можно сделать через `scp` или FileZilla.
-4.  **Отредактируйте `App.tsx` на сервере:**
-    *   Откройте файл: `nano /var/www/admin-panel/App.tsx`
-    *   Найдите строку: `const API_URL = 'http://localhost:3001/api';`
-    *   **Замените `localhost` на IP-адрес вашего сервера**:
-        `const API_URL = 'http://ВАШ_IP_АДРЕС_СЕРВЕРА:3001/api';`
-    *   Сохраните и закройте файл.
-5.  **Настройте Nginx для админ-панели:**
-    *   Создайте новый файл конфигурации:
-        ```bash
-        nano /etc/nginx/sites-available/admin-panel
-        ```
-    *   Вставьте в него следующий текст, заменив `ВАШ_IP_АДРЕС_СЕРВЕРА` на реальный IP:
+2.  **Configure Nginx:**
+    *   Create a new Nginx config file: `nano /etc/nginx/sites-available/admin-panel`
+    *   Paste the following configuration. **It's important that you replace `YOUR_SERVER_IP` with your actual server IP address.**
         ```nginx
         server {
             listen 80;
-            server_name ВАШ_IP_АДРЕС_СЕРВЕРА;
+            server_name YOUR_SERVER_IP;
 
             root /var/www/admin-panel;
             index index.html;
 
             location / {
-                try_files $uri $uri/ =404;
+                try_files $uri /index.html;
+            }
+
+            # This part forwards API requests to your backend
+            location /api {
+                proxy_pass http://localhost:3001;
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection 'upgrade';
+                proxy_set_header Host $host;
+                proxy_cache_bypass $http_upgrade;
             }
         }
         ```
-    *   Активируйте эту конфигурацию, создав символическую ссылку:
+    *   Enable the site and restart Nginx:
         ```bash
         ln -s /etc/nginx/sites-available/admin-panel /etc/nginx/sites-enabled/
-        ```
-    *   Проверьте конфигурацию на ошибки:
-        ```bash
-        nginx -t
-        ```
-    *   Если ошибок нет (`syntax is ok`, `test is successful`), перезапустите Nginx:
-        ```bash
+        # (If you get an error that the file exists, you can remove the old default config: rm /etc/nginx/sites-enabled/default)
+        nginx -t # Should say syntax is ok
         systemctl restart nginx
         ```
-6.  **Настройте брандмауэр (Firewall):**
+3.  **Configure Firewall (if not already done):**
     ```bash
-    ufw allow 'Nginx Full' # Открывает порты 80 и 443
-    ufw allow 3001/tcp     # Открывает порт для нашего API
-    ufw allow ssh          # Обязательно разрешаем SSH, чтобы не потерять доступ
-    ufw enable             # Включает брандмауэр (нажмите 'y' для подтверждения)
+    ufw allow 'Nginx Full'
+    ufw allow 3001/tcp  # For the API
+    ufw allow ssh
+    ufw enable
     ```
 
-### Готово!
+### **Congratulations!**
 
-Теперь вы можете:
-*   **Написать вашему боту в Telegram.** Он обработает анкету и сохранит её в базу данных.
-*   **Открыть админ-панель в браузере**, перейдя по адресу `http://ВАШ_IP_АДРЕС_СЕРВЕРА`. Вы должны увидеть все собранные анкеты.
+Your bot should be running and your admin panel should be accessible at `http://YOUR_SERVER_IP`.
 
-Вы создали полностью рабочую, автономную систему на вашем сервере!
+### **How to Update Your Application**
+
+The process is now much simpler:
+1.  Make code changes on your local machine.
+2.  Push changes to GitHub: `git add . && git commit -m "My update" && git push`
+3.  On your server:
+    ```bash
+    cd ~/telegram-profile-bot
+    git pull
+    npm install  # In case dependencies changed
+    npm run build
+    # Recopy only the frontend files that changed
+    cp -r dist/public/* /var/www/admin-panel/
+    # Restart the backend
+    pm2 restart telegram-bot
+    ```

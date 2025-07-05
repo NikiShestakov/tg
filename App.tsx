@@ -8,10 +8,8 @@ import { SearchIcon } from './components/icons';
 import { MediaViewerModal } from './components/MediaViewerModal';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 
-// !!! ВАЖНО ДЛЯ РАЗВЕРТЫВАНИЯ !!!
-// При переносе на сервер замените 'localhost' на IP-адрес вашего сервера.
-// Например: 'http://123.45.67.89:3001/api'
-const API_URL = 'http://localhost:3001/api';
+// The API URL is now relative. Nginx will handle proxying requests to the backend.
+const API_URL = '/api';
 
 const App: React.FC = () => {
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
@@ -41,7 +39,7 @@ const App: React.FC = () => {
       setAnalytics(analyticsData);
     } catch (err) {
       if (err instanceof Error) {
-          setError(`Не удалось загрузить данные. Убедитесь, что бэкенд-сервер запущен. Ошибка: ${err.message}`);
+          setError(`Не удалось загрузить данные. Убедитесь, что бэкенд-сервер запущен и Nginx настроен правильно. Ошибка: ${err.message}`);
       } else {
           setError('Произошла неизвестная ошибка.');
       }
