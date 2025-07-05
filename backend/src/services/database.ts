@@ -3,8 +3,13 @@ import { Pool } from 'pg';
 import { UserProfile } from '../types';
 import { ProfileData } from '../types';
 
+const connectionString = process.env.DATABASE_URL?.trim();
+if (!connectionString) {
+  throw new Error('DATABASE_URL environment variable is not set. The application cannot start.');
+}
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: connectionString,
 });
 
 // SQL statement to create the profiles table if it doesn't exist

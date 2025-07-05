@@ -2,7 +2,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { ParsedUserData } from '../types';
 
-const apiKey = process.env.API_KEY;
+const apiKey = process.env.API_KEY?.trim();
 if (!apiKey) {
   throw new Error("API_KEY is not set in environment variables");
 }
@@ -19,7 +19,7 @@ The fields to extract are:
 - measurements: Body measurements, like "90/60/90" (string).
 - about: A short biography or "about me" text (string).
 
-If a field is not present in the text, its value in the JSON should be null.
+If a field is not present in the text, its value in the JSON should be be null.
 The final output must be ONLY the JSON object, without any surrounding text, explanations, or markdown code fences.
 
 Example 1 (single message):
@@ -72,7 +72,7 @@ export const parseUserProfile = async (text: string): Promise<ParsedUserData> =>
       },
     });
 
-    let jsonStr = response.text.trim();
+    let jsonStr = (response.text || '').trim();
     // In case Gemini still wraps the JSON in markdown
     const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
     const match = jsonStr.match(fenceRegex);

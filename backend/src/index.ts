@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import express from 'express';
+import express, { json } from 'express';
 import cors from 'cors';
 import { startBot } from './bot';
 import { router } from './api';
@@ -12,7 +12,7 @@ const port = process.env.PORT || 3001;
 
 // Middlewares
 app.use(cors()); // Allow requests from the frontend
-app.use(express.json()); // Parse JSON bodies
+app.use(json()); // Parse JSON bodies
 
 // API routes
 app.use('/api', router);

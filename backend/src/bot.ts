@@ -4,7 +4,7 @@ import { parseUserProfile } from './services/geminiService';
 import { createProfile } from './services/database';
 import { ProfileData } from './types';
 
-const token = process.env.TELEGRAM_BOT_TOKEN;
+const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
 if (!token) {
   throw new Error('TELEGRAM_BOT_TOKEN is not set in environment variables');
 }
