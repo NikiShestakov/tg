@@ -4,7 +4,7 @@ dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import { startBot } from './bot';
-import router from './api';
+import { router } from './api';
 import { initDb } from './services/database';
 
 const app = express();

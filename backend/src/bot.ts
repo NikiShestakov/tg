@@ -32,9 +32,14 @@ export const startBot = () => {
 
   console.log('Telegram bot started...');
 
-  bot.on('polling_error', (error) => {
+  bot.on('polling_error', (error: any) => {
     console.error('Polling error:', error.message);
-    // You can add more specific handling here if needed
+    // For fatal errors, exit the process so PM2 can restart it.
+    // This prevents the bot from becoming unresponsive on unrecoverable errors.
+    if (error.code === 'EFATAL') {
+        console.error('Fatal polling error detected. Exiting...');
+        (process as any).exit(1);
+    }
   });
 
   bot.onText(/\/start/, (msg) => {
