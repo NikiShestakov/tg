@@ -2,7 +2,7 @@ import express from 'express';
 import { getProfiles, updateProfile, deleteProfile, getAnalytics } from './services/database';
 import { UserProfile } from './types';
 
-const router = express.Router();
+export const router = express.Router();
 
 // GET /api/profiles - Fetch all profiles
 router.get('/profiles', async (req, res) => {
@@ -50,5 +50,3 @@ router.delete('/profiles/:id', async (req, res) => {
     res.status(500).json({ message: `Error deleting profile ${id}` });
   }
 });
-
-export default router;
