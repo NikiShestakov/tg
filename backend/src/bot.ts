@@ -5,12 +5,17 @@ import { createProfile } from './services/database';
 import { ProfileData } from './types';
 
 // Sanitize the token to remove ANY whitespace characters (spaces, newlines, tabs) from anywhere in the string.
-// This is a more robust fix for the 'ERR_UNESCAPED_CHARACTERS' polling error.
-const token = process.env.TELEGRAM_BOT_TOKEN?.replace(/\s/g, '');
+const rawToken = process.env.TELEGRAM_BOT_TOKEN?.replace(/\s/g, '');
 
-if (!token) {
+if (!rawToken) {
   throw new Error('TELEGRAM_BOT_TOKEN is not set in environment variables');
 }
+
+// Final safeguard: encode the token to handle any special characters that might cause URL issues.
+const token = encodeURI(rawToken);
+
+// For debugging: log the token that is being used, masking most of it for security.
+console.log(`Using sanitized token: ${token.substring(0, 10)}...`);
 
 // User session state to buffer messages and media
 interface UserSession {
@@ -26,6 +31,11 @@ export const startBot = () => {
   const bot = new TelegramBot(token, { polling: true });
 
   console.log('Telegram bot started...');
+
+  bot.on('polling_error', (error) => {
+    console.error('Polling error:', error.message);
+    // You can add more specific handling here if needed
+  });
 
   bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;

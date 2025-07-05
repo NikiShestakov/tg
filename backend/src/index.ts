@@ -1,10 +1,10 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import express, { json } from 'express';
+import express from 'express';
 import cors from 'cors';
 import { startBot } from './bot';
-import { router } from './api';
+import router from './api';
 import { initDb } from './services/database';
 
 const app = express();
@@ -12,7 +12,7 @@ const port = process.env.PORT || 3001;
 
 // Middlewares
 app.use(cors()); // Allow requests from the frontend
-app.use(json()); // Parse JSON bodies
+app.use(express.json()); // Parse JSON bodies
 
 // API routes
 app.use('/api', router);
