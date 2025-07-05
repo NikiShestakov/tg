@@ -1,0 +1,5 @@
+{
+  "name": "Telegram",
+  "description": "An advanced admin panel for managing user profiles from a Telegram bot. Features include sortable columns, full-text search, an integrated media viewer for photos and videos, and a private notes system for administrators.",
+  "requestFramePermissions": []
+}
